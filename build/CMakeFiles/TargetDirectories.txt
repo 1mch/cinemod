@@ -1,0 +1,16 @@
+C:/0_dev/_cinemod/build/CMakeFiles/glad.dir
+C:/0_dev/_cinemod/build/CMakeFiles/imgui_lib.dir
+C:/0_dev/_cinemod/build/CMakeFiles/CineMod.dir
+C:/0_dev/_cinemod/build/CMakeFiles/edit_cache.dir
+C:/0_dev/_cinemod/build/CMakeFiles/rebuild_cache.dir
+C:/0_dev/_cinemod/build/_deps/glfw-build/CMakeFiles/edit_cache.dir
+C:/0_dev/_cinemod/build/_deps/glfw-build/CMakeFiles/rebuild_cache.dir
+C:/0_dev/_cinemod/build/_deps/glfw-build/src/CMakeFiles/glfw.dir
+C:/0_dev/_cinemod/build/_deps/glfw-build/src/CMakeFiles/update_mappings.dir
+C:/0_dev/_cinemod/build/_deps/glfw-build/src/CMakeFiles/edit_cache.dir
+C:/0_dev/_cinemod/build/_deps/glfw-build/src/CMakeFiles/rebuild_cache.dir
+C:/0_dev/_cinemod/build/_deps/glm-build/CMakeFiles/edit_cache.dir
+C:/0_dev/_cinemod/build/_deps/glm-build/CMakeFiles/rebuild_cache.dir
+C:/0_dev/_cinemod/build/_deps/glm-build/glm/CMakeFiles/glm.dir
+C:/0_dev/_cinemod/build/_deps/glm-build/glm/CMakeFiles/edit_cache.dir
+C:/0_dev/_cinemod/build/_deps/glm-build/glm/CMakeFiles/rebuild_cache.dir

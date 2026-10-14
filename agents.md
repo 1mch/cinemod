@@ -1,0 +1,3 @@
+Cieľom tohto projektu je vytvoriť klon programu "Cinema 4D" tak aby ktokoľvek kto vie pracovať s programom Cinema 4D tak bude vedieť rýchlo pochopiť a začať pracovať s týmto klonom. Celé UI, GUI, klávesové skratky, umiestnenie menu, umiestnenie okien, skratky, atď... by mali byť úplne rovnaké ako v Cinema 4D. To znamená že tento klon bude mať aj úplne rovnaké funkcie ako Cinema 4D.
+
+Bude to programované primárne v C++ so zameraním na moderné postupy a techniky programovania. Pre grafický engine by malo byť použité OpenGL alebo Vulkan.
