@@ -28,6 +28,8 @@ namespace CineMod {
         void CreateFramebuffer();
         void CreateShaders();
         void CreateCubeMesh();
+        void CreateSphereMesh();
+        void CreatePlaneMesh();
         void CreateGridMesh();
 
         void RenderGrid(const glm::mat4& viewProj);
@@ -49,12 +51,12 @@ namespace CineMod {
 
         // Meshes
         GLuint m_cubeVao = 0, m_cubeVbo = 0, m_cubeEbo = 0;
-        GLuint m_cubeLinesVao = 0, m_cubeLinesVbo = 0, m_cubeLinesEbo = 0;
+        GLuint m_sphereVao = 0, m_sphereVbo = 0, m_sphereEbo = 0;
+        int m_sphereIndexCount = 0;
+        GLuint m_planeVao = 0, m_planeVbo = 0, m_planeEbo = 0;
+        int m_planeIndexCount = 0;
         GLuint m_gridVao = 0, m_gridVbo = 0;
         int m_gridVertexCount = 0;
-
-        // Gizmo
-        GLuint m_gizmoVao = 0, m_gizmoVbo = 0;
     };
 
 } // namespace CineMod

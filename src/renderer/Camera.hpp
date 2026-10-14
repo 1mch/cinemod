@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include "core/Types.hpp"
 
 namespace CineMod {
 
@@ -23,6 +24,8 @@ namespace CineMod {
         glm::mat4 GetProjectionMatrix() const;
         glm::vec3 GetPosition() const;
         const glm::vec3& GetTarget() const { return m_target; }
+
+        Ray GetRay(float pixelX, float pixelY, float width, float height) const;
 
         float GetFov() const { return m_fov; }
         float GetDistance() const { return m_distance; }

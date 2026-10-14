@@ -18,12 +18,19 @@ namespace CineMod {
             obj->AddTag({ "Phong", "Phong" });
         }
         ImGui::SameLine();
+        if (ImGui::Button("+ Plane")) {
+            BaseObject* obj = scene.AddObject("Plane", ObjectType::Plane);
+            obj->AddTag({ "Phong", "Phong" });
+        }
+        ImGui::SameLine();
         if (ImGui::Button("+ Light")) {
             scene.AddObject("Light", ObjectType::Light);
         }
         ImGui::SameLine();
-        if (ImGui::Button("+ Camera")) {
-            scene.AddObject("Camera", ObjectType::Camera);
+        if (ImGui::Button("Duplicate")) {
+            if (scene.GetSelectedObject()) {
+                scene.DuplicateObject(scene.GetSelectedObject());
+            }
         }
         ImGui::SameLine();
         if (ImGui::Button("Delete")) {

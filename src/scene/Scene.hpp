@@ -25,10 +25,12 @@ namespace CineMod {
         void RemoveObject(uint64_t id);
         const std::vector<std::unique_ptr<BaseObject>>& GetRootObjects() const { return m_rootObjects; }
 
-        // Selection
+        // Selection & Interaction
         BaseObject* GetSelectedObject() const { return m_selectedObject; }
         void SelectObject(BaseObject* object) { m_selectedObject = object; }
         BaseObject* FindObjectById(uint64_t id);
+        BaseObject* PickObject(const Ray& ray);
+        BaseObject* DuplicateObject(BaseObject* source);
 
         // Materials
         Material* AddMaterial(const std::string& name);

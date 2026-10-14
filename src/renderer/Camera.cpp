@@ -76,4 +76,21 @@ namespace CineMod {
         return m_position;
     }
 
+    Ray Camera::GetRay(float pixelX, float pixelY, float width, float height) const {
+        if (width <= 0.0f || height <= 0.0f) return Ray{ m_position, glm::vec3(0.0f, 0.0f, -1.0f) };
+
+        float ndcX = (2.0f * pixelX) / width - 1.0f;
+        float ndcY = 1.0f - (2.0f * pixelY) / height;
+
+        glm::vec4 clipCoords(ndcX, ndcY, -1.0f, 1.0f);
+        glm::mat4 invProj = glm::inverse(GetProjectionMatrix());
+        glm::vec4 eyeCoords = invProj * clipCoords;
+        eyeCoords = glm::vec4(eyeCoords.x, eyeCoords.y, -1.0f, 0.0f);
+
+        glm::mat4 invView = glm::inverse(GetViewMatrix());
+        glm::vec3 rayWorld = glm::normalize(glm::vec3(invView * eyeCoords));
+
+        return Ray{ m_position, rayWorld };
+    }
+
 } // namespace CineMod

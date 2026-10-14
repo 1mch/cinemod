@@ -1,6 +1,7 @@
 #include "ViewportManager.hpp"
 #include "ui/theme/C4DTheme.hpp"
 #include <imgui.h>
+#include <ImGuizmo.h>
 #include <iostream>
 
 namespace CineMod {
@@ -8,7 +9,7 @@ namespace CineMod {
     ViewportManager::ViewportManager() {
     }
 
-    void ViewportManager::Render(ViewportRenderer& renderer, Scene& scene, ToolMode /*currentTool*/) {
+    void ViewportManager::Render(ViewportRenderer& renderer, Scene& scene, ToolMode currentTool) {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::Begin("Perspective View", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         ImGui::PopStyleVar();
@@ -56,6 +57,12 @@ namespace CineMod {
                 ImGui::EndMenu();
             }
 
+            // Coordinate System Indicator (W key toggles World/Object)
+            ImGui::SameLine(ImGui::GetWindowWidth() - 180.0f);
+            if (ImGui::SmallButton(m_coordSystem == CoordSystem::World ? "[Coord: World (W)]" : "[Coord: Object (W)]")) {
+                m_coordSystem = (m_coordSystem == CoordSystem::World) ? CoordSystem::Object : CoordSystem::World;
+            }
+
             ImGui::EndMenuBar();
         }
 
@@ -70,8 +77,14 @@ namespace CineMod {
         // Render OpenGL texture (flipping UV vertically for OpenGL)
         ImGui::Image(texId, viewSize, ImVec2(0, 1), ImVec2(1, 0));
 
-        // Handle C4D mouse and keyboard camera navigation
-        HandleInput(renderer, scene);
+        ImVec2 viewPos = ImGui::GetItemRectMin();
+        ImVec2 actualSize = ImGui::GetItemRectSize();
+
+        // Handle C4D mouse and keyboard camera navigation & Raycast Selection
+        HandleInput(renderer, scene, viewPos, actualSize);
+
+        // Render interactive 3D Transform Gizmo (ImGuizmo)
+        RenderGizmo(renderer, scene, currentTool, viewPos, actualSize);
 
         // Render C4D HUD overlay (top right icons for Pan, Zoom, Orbit, 4-Split)
         RenderHudOverlay(renderer);
@@ -79,26 +92,47 @@ namespace CineMod {
         ImGui::End();
     }
 
-    void ViewportManager::HandleInput(ViewportRenderer& renderer, Scene& scene) {
-        if (!ImGui::IsItemHovered() && !m_isInteracting) return;
+    void ViewportManager::RenderGizmo(ViewportRenderer& renderer, Scene& scene, ToolMode currentTool, const ImVec2& viewPos, const ImVec2& viewSize) {
+        BaseObject* selectedObj = scene.GetSelectedObject();
+        if (!selectedObj) return;
+        if (currentTool != ToolMode::Move && currentTool != ToolMode::Rotate && currentTool != ToolMode::Scale) return;
 
+        ImGuizmo::SetOrthographic(false);
+        ImGuizmo::SetDrawlist();
+        ImGuizmo::SetRect(viewPos.x, viewPos.y, viewSize.x, viewSize.y);
+
+        glm::mat4 view = renderer.GetCamera().GetViewMatrix();
+        glm::mat4 proj = renderer.GetCamera().GetProjectionMatrix();
+        glm::mat4 model = selectedObj->GetWorldMatrix();
+
+        ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
+        if (currentTool == ToolMode::Rotate) op = ImGuizmo::ROTATE;
+        else if (currentTool == ToolMode::Scale) op = ImGuizmo::SCALE;
+
+        ImGuizmo::MODE mode = (m_coordSystem == CoordSystem::World) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
+
+        if (ImGuizmo::Manipulate(&view[0][0], &proj[0][0], op, mode, &model[0][0])) {
+            float translation[3], rotation[3], scale[3];
+            ImGuizmo::DecomposeMatrixToComponents(&model[0][0], translation, rotation, scale);
+            selectedObj->SetPosition(glm::vec3(translation[0], translation[1], translation[2]));
+            selectedObj->SetRotationHPB(glm::vec3(rotation[1], rotation[0], rotation[2])); // Heading=Yaw(Y), Pitch=X, Bank=Z
+            selectedObj->SetScale(glm::vec3(scale[0], scale[1], scale[2]));
+        }
+    }
+
+    void ViewportManager::HandleInput(ViewportRenderer& renderer, Scene& scene, const ImVec2& viewPos, const ImVec2& viewSize) {
         ImGuiIO& io = ImGui::GetIO();
         Camera& camera = renderer.GetCamera();
 
-        // Mouse Wheel Zoom
-        if (io.MouseWheel != 0.0f) {
-            camera.Zoom(-io.MouseWheel * 15.0f);
+        // Toggle Coordinate system with 'W'
+        if (ImGui::IsKeyPressed(ImGuiKey_W, false)) {
+            m_coordSystem = (m_coordSystem == CoordSystem::World) ? CoordSystem::Object : CoordSystem::World;
         }
 
-        // Shortcut Keys
-        bool key1 = ImGui::IsKeyDown(ImGuiKey_1); // Pan
-        bool key2 = ImGui::IsKeyDown(ImGuiKey_2); // Zoom
-        bool key3 = ImGui::IsKeyDown(ImGuiKey_3); // Orbit
-        bool altDown = io.KeyAlt;
-
-        bool lmbHeld = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-        bool mmbHeld = ImGui::IsMouseDown(ImGuiMouseButton_Middle);
-        bool rmbHeld = ImGui::IsMouseDown(ImGuiMouseButton_Right);
+        // Duplicate with Ctrl+D
+        if ((io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false)) && scene.GetSelectedObject()) {
+            scene.DuplicateObject(scene.GetSelectedObject());
+        }
 
         // Quick Frame shortcut keys
         if (ImGui::IsKeyPressed(ImGuiKey_S, false) && scene.GetSelectedObject()) {
@@ -107,6 +141,38 @@ namespace CineMod {
         if (ImGui::IsKeyPressed(ImGuiKey_H, false)) {
             camera.FrameAll();
         }
+
+        if (!ImGui::IsItemHovered() && !m_isInteracting) return;
+
+        // If user is actively using ImGuizmo, don't do camera orbit or raycast
+        if (ImGuizmo::IsUsing()) {
+            return;
+        }
+
+        // Mouse Wheel Zoom
+        if (io.MouseWheel != 0.0f) {
+            camera.Zoom(-io.MouseWheel * 15.0f);
+        }
+
+        bool key1 = ImGui::IsKeyDown(ImGuiKey_1); // Pan
+        bool key2 = ImGui::IsKeyDown(ImGuiKey_2); // Zoom
+        bool key3 = ImGui::IsKeyDown(ImGuiKey_3); // Orbit
+        bool altDown = io.KeyAlt;
+
+        bool isNavigating = key1 || key2 || key3 || altDown;
+
+        // Raycasting Object Picking (Click to Select)
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !isNavigating && !ImGuizmo::IsOver()) {
+            float mouseX = io.MousePos.x - viewPos.x;
+            float mouseY = io.MousePos.y - viewPos.y;
+            Ray ray = camera.GetRay(mouseX, mouseY, viewSize.x, viewSize.y);
+            BaseObject* picked = scene.PickObject(ray);
+            scene.SelectObject(picked);
+        }
+
+        bool lmbHeld = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+        bool mmbHeld = ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+        bool rmbHeld = ImGui::IsMouseDown(ImGuiMouseButton_Right);
 
         ImVec2 mousePos = io.MousePos;
         ImVec2 delta = ImVec2(mousePos.x - m_lastMousePos.x, mousePos.y - m_lastMousePos.y);

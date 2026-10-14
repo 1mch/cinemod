@@ -87,4 +87,73 @@ namespace CineMod {
         return m_selectedMaterial;
     }
 
+    BaseObject* Scene::PickObject(const Ray& ray) {
+        BaseObject* closestObj = nullptr;
+        float closestDist = std::numeric_limits<float>::max();
+
+        auto CheckObject = [&](auto& self, BaseObject* obj) -> void {
+            if (!obj || obj->GetEditorVisibility() == VisibilityMode::Hidden) return;
+
+            glm::mat4 invWorld = glm::inverse(obj->GetWorldMatrix());
+            glm::vec3 localOrigin = glm::vec3(invWorld * glm::vec4(ray.origin, 1.0f));
+            glm::vec3 localDir = glm::normalize(glm::vec3(invWorld * glm::vec4(ray.direction, 0.0f)));
+            Ray localRay{ localOrigin, localDir };
+
+            glm::vec3 minB(-50.0f), maxB(50.0f);
+            if (obj->GetType() == ObjectType::Cube) {
+                minB = -0.5f * obj->cubeSize;
+                maxB =  0.5f * obj->cubeSize;
+            } else if (obj->GetType() == ObjectType::Sphere) {
+                minB = -glm::vec3(obj->sphereRadius);
+                maxB =  glm::vec3(obj->sphereRadius);
+            } else if (obj->GetType() == ObjectType::Plane) {
+                minB = glm::vec3(-obj->cubeSize.x * 0.5f, -2.0f, -obj->cubeSize.z * 0.5f);
+                maxB = glm::vec3( obj->cubeSize.x * 0.5f,  2.0f,  obj->cubeSize.z * 0.5f);
+            }
+
+            float tLocal = 0.0f;
+            if (localRay.IntersectsAABB(minB, maxB, tLocal)) {
+                glm::vec3 hitPointWorld = glm::vec3(obj->GetWorldMatrix() * glm::vec4(localOrigin + localDir * tLocal, 1.0f));
+                float dist = glm::distance(ray.origin, hitPointWorld);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closestObj = obj;
+                }
+            }
+
+            for (const auto& child : obj->GetChildren()) {
+                self(self, child.get());
+            }
+        };
+
+        for (const auto& root : m_rootObjects) {
+            CheckObject(CheckObject, root.get());
+        }
+
+        return closestObj;
+    }
+
+    BaseObject* Scene::DuplicateObject(BaseObject* source) {
+        if (!source) return nullptr;
+
+        std::string newName = source->GetName() + ".1";
+        BaseObject* copy = AddObject(newName, source->GetType());
+        copy->SetPosition(source->GetPosition() + glm::vec3(50.0f, 0.0f, 50.0f));
+        copy->SetRotationHPB(source->GetRotationHPB());
+        copy->SetScale(source->GetScale());
+        copy->cubeSize = source->cubeSize;
+        copy->cubeSegments = source->cubeSegments;
+        copy->cubeFillet = source->cubeFillet;
+        copy->cubeFilletRadius = source->cubeFilletRadius;
+        copy->sphereRadius = source->sphereRadius;
+        copy->sphereSegments = source->sphereSegments;
+
+        for (const auto& tag : source->GetTags()) {
+            copy->AddTag(tag);
+        }
+
+        m_selectedObject = copy;
+        return copy;
+    }
+
 } // namespace CineMod

@@ -44,6 +44,14 @@ namespace CineMod {
         if (m_cubeVbo) glDeleteBuffers(1, &m_cubeVbo);
         if (m_cubeEbo) glDeleteBuffers(1, &m_cubeEbo);
 
+        if (m_sphereVao) glDeleteVertexArrays(1, &m_sphereVao);
+        if (m_sphereVbo) glDeleteBuffers(1, &m_sphereVbo);
+        if (m_sphereEbo) glDeleteBuffers(1, &m_sphereEbo);
+
+        if (m_planeVao) glDeleteVertexArrays(1, &m_planeVao);
+        if (m_planeVbo) glDeleteBuffers(1, &m_planeVbo);
+        if (m_planeEbo) glDeleteBuffers(1, &m_planeEbo);
+
         if (m_gridVao) glDeleteVertexArrays(1, &m_gridVao);
         if (m_gridVbo) glDeleteBuffers(1, &m_gridVbo);
 
@@ -55,6 +63,8 @@ namespace CineMod {
         CreateFramebuffer();
         CreateShaders();
         CreateCubeMesh();
+        CreateSphereMesh();
+        CreatePlaneMesh();
         CreateGridMesh();
     }
 
@@ -247,6 +257,100 @@ namespace CineMod {
         glBindVertexArray(0);
     }
 
+    void ViewportRenderer::CreateSphereMesh() {
+        std::vector<float> vertices;
+        std::vector<unsigned int> indices;
+
+        const unsigned int X_SEGMENTS = 32;
+        const unsigned int Y_SEGMENTS = 16;
+        const float PI = 3.14159265359f;
+
+        for (unsigned int x = 0; x <= X_SEGMENTS; ++x) {
+            for (unsigned int y = 0; y <= Y_SEGMENTS; ++y) {
+                float xSegment = (float)x / (float)X_SEGMENTS;
+                float ySegment = (float)y / (float)Y_SEGMENTS;
+                float xPos = std::cos(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+                float yPos = std::cos(ySegment * PI);
+                float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+
+                // Position
+                vertices.push_back(xPos);
+                vertices.push_back(yPos);
+                vertices.push_back(zPos);
+                // Normal
+                vertices.push_back(xPos);
+                vertices.push_back(yPos);
+                vertices.push_back(zPos);
+            }
+        }
+
+        for (unsigned int y = 0; y < Y_SEGMENTS; ++y) {
+            for (unsigned int x = 0; x < X_SEGMENTS; ++x) {
+                indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+                indices.push_back(y * (X_SEGMENTS + 1) + x);
+                indices.push_back(y * (X_SEGMENTS + 1) + x + 1);
+
+                indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+                indices.push_back(y * (X_SEGMENTS + 1) + x + 1);
+                indices.push_back((y + 1) * (X_SEGMENTS + 1) + x + 1);
+            }
+        }
+
+        m_sphereIndexCount = static_cast<int>(indices.size());
+
+        glGenVertexArrays(1, &m_sphereVao);
+        glGenBuffers(1, &m_sphereVbo);
+        glGenBuffers(1, &m_sphereEbo);
+
+        glBindVertexArray(m_sphereVao);
+        glBindBuffer(GL_ARRAY_BUFFER, m_sphereVbo);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_sphereEbo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+
+        glBindVertexArray(0);
+    }
+
+    void ViewportRenderer::CreatePlaneMesh() {
+        float vertices[] = {
+            // Pos              // Normal
+            -0.5f, 0.0f, -0.5f,  0.0f, 1.0f, 0.0f,
+             0.5f, 0.0f, -0.5f,  0.0f, 1.0f, 0.0f,
+             0.5f, 0.0f,  0.5f,  0.0f, 1.0f, 0.0f,
+            -0.5f, 0.0f,  0.5f,  0.0f, 1.0f, 0.0f
+        };
+
+        unsigned int indices[] = {
+            0, 1, 2,  2, 3, 0
+        };
+
+        m_planeIndexCount = 6;
+
+        glGenVertexArrays(1, &m_planeVao);
+        glGenBuffers(1, &m_planeVbo);
+        glGenBuffers(1, &m_planeEbo);
+
+        glBindVertexArray(m_planeVao);
+        glBindBuffer(GL_ARRAY_BUFFER, m_planeVbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_planeEbo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+
+        glBindVertexArray(0);
+    }
+
     void ViewportRenderer::CreateGridMesh() {
         std::vector<float> gridData;
 
@@ -380,30 +484,45 @@ namespace CineMod {
         glm::vec3 camPos = m_camera.GetPosition();
         glUniform3fv(glGetUniformLocation(m_shaderBasic, "uViewPos"), 1, &camPos[0]);
 
-        glBindVertexArray(m_cubeVao);
+        auto RenderNode = [&](auto& self, BaseObject* obj) -> void {
+            if (!obj || obj->GetEditorVisibility() == VisibilityMode::Hidden) return;
 
-        for (const auto& obj : scene.GetRootObjects()) {
-            if (obj->GetEditorVisibility() == VisibilityMode::Hidden) continue;
-            if (obj->GetType() != ObjectType::Cube) continue;
-
-            glm::mat4 model = obj->GetWorldMatrix();
-            // Scale by parametric cube size
-            model = glm::scale(model, obj->cubeSize);
-
-            glUniformMatrix4fv(glGetUniformLocation(m_shaderBasic, "uModel"), 1, GL_FALSE, &model[0][0]);
-
-            // Cinema 4D object default color vs selected color
-            bool isSelected = (scene.GetSelectedObject() == obj.get());
+            bool isSelected = (scene.GetSelectedObject() == obj);
             glm::vec3 color = isSelected ? glm::vec3(0.92f, 0.65f, 0.15f) : glm::vec3(0.68f, 0.68f, 0.68f);
             glUniform3fv(glGetUniformLocation(m_shaderBasic, "uColor"), 1, &color[0]);
 
-            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+            glm::mat4 model = obj->GetWorldMatrix();
+
+            if (obj->GetType() == ObjectType::Cube) {
+                model = glm::scale(model, obj->cubeSize);
+                glUniformMatrix4fv(glGetUniformLocation(m_shaderBasic, "uModel"), 1, GL_FALSE, &model[0][0]);
+                glBindVertexArray(m_cubeVao);
+                glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+            } else if (obj->GetType() == ObjectType::Sphere) {
+                model = glm::scale(model, glm::vec3(obj->sphereRadius));
+                glUniformMatrix4fv(glGetUniformLocation(m_shaderBasic, "uModel"), 1, GL_FALSE, &model[0][0]);
+                glBindVertexArray(m_sphereVao);
+                glDrawElements(GL_TRIANGLES, m_sphereIndexCount, GL_UNSIGNED_INT, 0);
+            } else if (obj->GetType() == ObjectType::Plane) {
+                model = glm::scale(model, glm::vec3(obj->cubeSize.x, 1.0f, obj->cubeSize.z));
+                glUniformMatrix4fv(glGetUniformLocation(m_shaderBasic, "uModel"), 1, GL_FALSE, &model[0][0]);
+                glBindVertexArray(m_planeVao);
+                glDrawElements(GL_TRIANGLES, m_planeIndexCount, GL_UNSIGNED_INT, 0);
+            }
+
+            for (const auto& child : obj->GetChildren()) {
+                self(self, child.get());
+            }
+        };
+
+        for (const auto& root : scene.GetRootObjects()) {
+            RenderNode(RenderNode, root.get());
         }
 
         glBindVertexArray(0);
     }
 
-    void ViewportRenderer::Render(const Scene& scene, ToolMode currentTool) {
+    void ViewportRenderer::Render(const Scene& scene, ToolMode /*currentTool*/) {
         glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
         glViewport(0, 0, m_width, m_height);
 
@@ -424,9 +543,6 @@ namespace CineMod {
 
         // Render Meshes
         RenderSceneObjects(scene, viewProj);
-
-        // Render Gizmo
-        RenderGizmo(scene.GetSelectedObject(), viewProj, currentTool);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }

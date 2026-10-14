@@ -58,4 +58,36 @@ namespace CineMod {
         return rotY * rotX * rotZ;
     }
 
+    struct Ray {
+        glm::vec3 origin{ 0.0f };
+        glm::vec3 direction{ 0.0f, 0.0f, -1.0f };
+
+        // Ray vs Axis-Aligned Bounding Box (AABB) intersection test
+        bool IntersectsAABB(const glm::vec3& minBounds, const glm::vec3& maxBounds, float& tOut) const {
+            float tmin = (minBounds.x - origin.x) / (direction.x != 0.0f ? direction.x : 1e-6f);
+            float tmax = (maxBounds.x - origin.x) / (direction.x != 0.0f ? direction.x : 1e-6f);
+            if (tmin > tmax) std::swap(tmin, tmax);
+
+            float tymin = (minBounds.y - origin.y) / (direction.y != 0.0f ? direction.y : 1e-6f);
+            float tymax = (maxBounds.y - origin.y) / (direction.y != 0.0f ? direction.y : 1e-6f);
+            if (tymin > tymax) std::swap(tymin, tymax);
+
+            if ((tmin > tymax) || (tymin > tmax)) return false;
+            if (tymin > tmin) tmin = tymin;
+            if (tymax < tmax) tmax = tymax;
+
+            float tzmin = (minBounds.z - origin.z) / (direction.z != 0.0f ? direction.z : 1e-6f);
+            float tzmax = (maxBounds.z - origin.z) / (direction.z != 0.0f ? direction.z : 1e-6f);
+            if (tzmin > tzmax) std::swap(tzmin, tzmax);
+
+            if ((tmin > tzmax) || (tzmin > tmax)) return false;
+            if (tzmin > tmin) tmin = tzmin;
+            if (tzmax < tmax) tmax = tzmax;
+
+            if (tmax < 0.0f) return false;
+            tOut = (tmin >= 0.0f) ? tmin : tmax;
+            return true;
+        }
+    };
+
 } // namespace CineMod

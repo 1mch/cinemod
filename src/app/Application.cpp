@@ -303,6 +303,8 @@ namespace CineMod {
         ImGui::SameLine();
         if (ImGui::Button("+ Sphere")) { m_scene.AddObject("Sphere", ObjectType::Sphere); }
         ImGui::SameLine();
+        if (ImGui::Button("+ Plane")) { m_scene.AddObject("Plane", ObjectType::Plane); }
+        ImGui::SameLine();
 
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();

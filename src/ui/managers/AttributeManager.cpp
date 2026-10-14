@@ -102,6 +102,10 @@ namespace CineMod {
             ImGui::TextDisabled("Sphere Parameters");
             ImGui::DragFloat("Radius", &obj->sphereRadius, 1.0f, 0.1f, 10000.0f, "%.1f cm");
             ImGui::DragInt("Segments", &obj->sphereSegments, 1, 3, 128);
+        } else if (obj->GetType() == ObjectType::Plane) {
+            ImGui::TextDisabled("Plane Parameters");
+            ImGui::DragFloat("Width (X)", &obj->cubeSize.x, 1.0f, 0.1f, 10000.0f, "%.1f cm");
+            ImGui::DragFloat("Depth (Z)", &obj->cubeSize.z, 1.0f, 0.1f, 10000.0f, "%.1f cm");
         } else {
             ImGui::TextDisabled("No specific parametric properties for this object type.");
         }

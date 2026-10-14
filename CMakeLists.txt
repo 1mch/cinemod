@@ -63,11 +63,13 @@ add_library(imgui_lib STATIC
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+    external/imguizmo/src/ImGuizmo.cpp
 )
 target_include_directories(imgui_lib PUBLIC
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
     external/glad/include
+    external/imguizmo/src
 )
 target_link_libraries(imgui_lib PUBLIC
     glfw
@@ -88,6 +90,7 @@ add_executable(CineMod
 target_include_directories(CineMod PRIVATE
     src
     external/glad/include
+    external/imguizmo/src
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
 )

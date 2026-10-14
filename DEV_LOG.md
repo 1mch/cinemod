@@ -44,15 +44,27 @@ Tento súbor slúži ako centrálny pracovný denník vývoja. Obsahuje aktuáln
   - Renderovacia slučka do OpenGL Framebufferu (FBO).
   - 3D Ground Grid so zvýraznenými stredovými osami X (červená) a Z (modrá).
   - 3D Orbit/Pan/Dolly kamera okolo bodu záujmu (Pivot) ovládaná klávesmi `1`, `2`, `3` a myšou (`Alt` + tlačidlá, koliesko, `S` pre Frame Selected, `H` pre Frame All).
-  - Zobrazenie parametrických objektov (kocka) a 3D manipulačného transformačného gizma.
+- [x] **Fáza 4 & 5: Plnohodnotná 3D interakcia (ImGuizmo, Raycast Picking, viac primitívov)**:
+  - **Integrácia `ImGuizmo`**:
+    - Skutočný manipulačný 3D gizmo s plynulým ťahaním myšou vo viewporte.
+    - Nástroje: **Move (`E`)** s osami a rovinami, **Rotate (`R`)** s kružnicami, **Scale (`T`)**.
+    - Prepínanie **World / Object** priestoru cez kláves **`W`**.
+    - Obojsmerné prepojenie v reálnom čase s Attribute a Coordinates Managerom.
+  - **3D Raycast Picking**:
+    - Výber objektu kliknutím myšou priamo vo viewporte cez lúč kamery a AABB test.
+    - Kliknutie do prázdneho priestoru zruší výber.
+  - **Parametrické telesá**:
+    - Generovanie sietí s normálami: **Cube (Kocka)**, **Sphere (Guľa)**, **Plane (Rovina)**.
+  - **Klonovanie / Duplikácia**:
+    - Okamžitá duplikácia objektu cez klávesovú skratku **`Ctrl + D`** alebo tlačidlo v Object Manageri.
 
 ---
 
 ## 🔄 Čo sa aktuálne rieši (In Progress)
 
-- [ ] **Fáza 4 & 5: Interaktívny Raycasting výber vo viewporte a 3D Gizmo manipulácia:**
-  - Výber objektu kliknutím priamo do 3D viewportu cez raycasting myši.
-  - Interaktívne ťahanie šípok gizma (X, Y, Z) vo viewporte pre posun objektu myšou.
+- [ ] **Fáza 6 & 7: Command systém, Undo/Redo a serializácia scény:**
+  - Plnohodnotný transakčný Undo/Redo stack (`Ctrl+Z`, `Ctrl+Y`) pre posun objektov, zmeny hodnôt a pridávanie/mazanie.
+  - Ukladanie a načítanie projektu (`Ctrl+S`, `Ctrl+O`).
 
 ---
 
@@ -86,6 +98,20 @@ Tento súbor slúži ako centrálny pracovný denník vývoja. Obsahuje aktuáln
 ---
 
 ## 📝 Chronologický denník vývoja (Changelog & Diary)
+
+### [14. 10. 2026] – Implementácia Fázy 4 & 5: ImGuizmo, Raycast Picking a viac primitívov
+* **Aktivita:** Integrácia 3D manipulačného gizma, výberu objektov lúčom kamery a procedurálnych telies.
+* **Vykonané zmeny:**
+  * Pridaná a skompilovaná knižnica `ImGuizmo` priamo do `imgui_lib`.
+  * Prepojený `ImGuizmo` s `ViewportManagerom`:
+    * Posun (`E`), Rotácia (`R`), Škálovanie (`T`).
+    * Prepínanie svetového a lokálneho priestoru (`W`).
+    * Okamžitá dekompozícia do pozície, HPB rotácie a škálovania spätne do označeného `BaseObject`.
+  * Implementovaný 3D Raycasting výber objektov (`Scene::PickObject`, `Camera::GetRay` a `Ray::IntersectsAABB`).
+  * Pridané generovanie sietí pre **Sphere (Guľa)** a **Plane (Rovina)** v `ViewportRenderer`.
+  * Pridaná podpora duplikácie objektov (`Scene::DuplicateObject`, skratka `Ctrl+D`).
+  * Aktualizované panely `ObjectManager` a `AttributeManager` pre nové typy telies.
+  * Projekt skompilovaný s 0 chybami a 0 varovaniami do `build/CineMod.exe`.
 
 ### [14. 10. 2026] – Implementácia Fázy 1 & 2 a úspešný build CineMod.exe
 * **Aktivita:** Vytvorenie C++20 aplikačnej kostry, OpenGL 4.5 viewportu a C4D UI docking manažérov.
