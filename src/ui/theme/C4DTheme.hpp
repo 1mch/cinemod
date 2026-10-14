@@ -17,6 +17,7 @@ namespace CineMod {
         static constexpr ImVec4 ColorTrafficDefault = ImVec4(0.50f, 0.50f, 0.50f, 1.0f); // Gray
         static constexpr ImVec4 ColorTrafficVisible = ImVec4(0.20f, 0.85f, 0.30f, 1.0f); // Green
         static constexpr ImVec4 ColorTrafficHidden  = ImVec4(0.90f, 0.20f, 0.20f, 1.0f); // Red
+        static constexpr ImVec4 ColorSelection      = ImVec4(0.28f, 0.38f, 0.55f, 1.0f); // C4D Selection blue/gray
     };
 
 } // namespace CineMod

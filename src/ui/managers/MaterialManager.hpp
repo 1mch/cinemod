@@ -8,6 +8,10 @@ namespace CineMod {
     public:
         MaterialManager() = default;
         void Render(Scene& scene);
+
+    private:
+        void RenderEditor(Scene& scene);
+        bool m_showEditor = false;
     };
 
 } // namespace CineMod

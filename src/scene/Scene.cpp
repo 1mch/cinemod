@@ -46,16 +46,35 @@ namespace CineMod {
         return ptr;
     }
 
-    void Scene::RemoveObject(uint64_t id) {
+    std::unique_ptr<BaseObject> Scene::DetachObject(uint64_t id) {
         if (m_selectedObject && m_selectedObject->GetId() == id) {
             m_selectedObject = nullptr;
         }
 
-        // Remove from root
-        m_rootObjects.erase(
-            std::remove_if(m_rootObjects.begin(), m_rootObjects.end(),
-                [id](const std::unique_ptr<BaseObject>& obj) { return obj->GetId() == id; }),
-            m_rootObjects.end());
+        for (auto it = m_rootObjects.begin(); it != m_rootObjects.end(); ++it) {
+            if ((*it)->GetId() == id) {
+                std::unique_ptr<BaseObject> obj = std::move(*it);
+                m_rootObjects.erase(it);
+                return obj;
+            }
+        }
+        return nullptr;
+    }
+
+    BaseObject* Scene::InsertObject(std::unique_ptr<BaseObject> obj, BaseObject* parent) {
+        if (!obj) return nullptr;
+        BaseObject* ptr = obj.get();
+        if (parent) {
+            parent->AddChild(std::move(obj));
+        } else {
+            m_rootObjects.push_back(std::move(obj));
+        }
+        m_selectedObject = ptr;
+        return ptr;
+    }
+
+    void Scene::RemoveObject(uint64_t id) {
+        DetachObject(id);
     }
 
     BaseObject* Scene::FindObjectRecursive(BaseObject* current, uint64_t id) {
@@ -85,6 +104,20 @@ namespace CineMod {
         m_materials.push_back(mat);
         m_selectedMaterial = &m_materials.back();
         return m_selectedMaterial;
+    }
+
+    const Material* Scene::FindMaterialById(uint64_t id) const {
+        for (const auto& mat : m_materials) {
+            if (mat.id == id) return &mat;
+        }
+        return nullptr;
+    }
+
+    Material* Scene::FindMaterialById(uint64_t id) {
+        for (auto& mat : m_materials) {
+            if (mat.id == id) return &mat;
+        }
+        return nullptr;
     }
 
     BaseObject* Scene::PickObject(const Ray& ray) {

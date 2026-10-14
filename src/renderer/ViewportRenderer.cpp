@@ -487,9 +487,12 @@ namespace CineMod {
         auto RenderNode = [&](auto& self, BaseObject* obj) -> void {
             if (!obj || obj->GetEditorVisibility() == VisibilityMode::Hidden) return;
 
+            const Material* mat = scene.FindMaterialById(obj->GetMaterialId());
+            glm::vec3 baseColor = mat ? mat->color : glm::vec3(0.75f, 0.75f, 0.75f);
+
             bool isSelected = (scene.GetSelectedObject() == obj);
-            glm::vec3 color = isSelected ? glm::vec3(0.92f, 0.65f, 0.15f) : glm::vec3(0.68f, 0.68f, 0.68f);
-            glUniform3fv(glGetUniformLocation(m_shaderBasic, "uColor"), 1, &color[0]);
+            glm::vec3 finalColor = isSelected ? glm::mix(baseColor, glm::vec3(0.95f, 0.65f, 0.12f), 0.35f) : baseColor;
+            glUniform3fv(glGetUniformLocation(m_shaderBasic, "uColor"), 1, &finalColor[0]);
 
             glm::mat4 model = obj->GetWorldMatrix();
 

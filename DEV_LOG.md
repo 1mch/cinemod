@@ -6,9 +6,9 @@ Tento súbor slúži ako centrálny pracovný denník vývoja. Obsahuje aktuáln
 
 ## 📊 Prehľad stavu projektu (Status Dashboard)
 
-* **Aktuálna fáza:** Fáza 3 & 4 – Rozširovanie interakcie viewportu a dátového modelu
-* **Celkový stav:** Fázy 1 a 2 kompletne funkčné a úspešne skompilované do `CineMod.exe`! Okno, OpenGL 4.5, C4D Docking layout, 3D kamera, ground grid a manažéri bežia.
-* **Cieľový stack:** C++20, CMake 3.24+, MinGW GCC 15.2, GLFW 3.4, Glad OpenGL 4.5 Core, Dear ImGui (Docking), GLM 1.0.1.
+* **Aktuálna fáza:** Fáza 6 & 7 – Transakčný systém, Quick Commander, Material Editor a serializácia
+* **Celkový stav:** Fázy 1 až 6 kompletne funkčné a úspešne skompilované do `CineMod.exe` bez chýb a varovaní!
+* **Cieľový stack:** C++20, CMake 3.24+, MinGW GCC 15.2, GLFW 3.4, Glad OpenGL 4.5 Core, Dear ImGui (Docking), ImGuizmo, GLM 1.0.1.
 * **Posledná aktualizácia:** 14. 10. 2026
 
 ---
@@ -40,64 +40,69 @@ Tento súbor slúži ako centrálny pracovný denník vývoja. Obsahuje aktuáln
     - Material Manager (paleta materiálov).
     - Timeline (ovládanie prehrávania, playhead, frame counter, keyframe tlačidlo `F9`).
     - 3D Viewport s HUD ikonami pre Pan `1`, Zoom `2`, Orbit `3` a 4-Split `#`.
-- [x] **Fáza 3 (Základ): 3D Viewport, Grid & C4D Navigačná Kamera**:
+- [x] **Fáza 3: 3D Viewport, Grid & C4D Navigačná Kamera**:
   - Renderovacia slučka do OpenGL Framebufferu (FBO).
   - 3D Ground Grid so zvýraznenými stredovými osami X (červená) a Z (modrá).
   - 3D Orbit/Pan/Dolly kamera okolo bodu záujmu (Pivot) ovládaná klávesmi `1`, `2`, `3` a myšou (`Alt` + tlačidlá, koliesko, `S` pre Frame Selected, `H` pre Frame All).
 - [x] **Fáza 4 & 5: Plnohodnotná 3D interakcia (ImGuizmo, Raycast Picking, viac primitívov)**:
-  - **Integrácia `ImGuizmo`**:
-    - Skutočný manipulačný 3D gizmo s plynulým ťahaním myšou vo viewporte.
-    - Nástroje: **Move (`E`)** s osami a rovinami, **Rotate (`R`)** s kružnicami, **Scale (`T`)**.
-    - Prepínanie **World / Object** priestoru cez kláves **`W`**.
-    - Obojsmerné prepojenie v reálnom čase s Attribute a Coordinates Managerom.
-  - **3D Raycast Picking**:
-    - Výber objektu kliknutím myšou priamo vo viewporte cez lúč kamery a AABB test.
-    - Kliknutie do prázdneho priestoru zruší výber.
-  - **Parametrické telesá**:
-    - Generovanie sietí s normálami: **Cube (Kocka)**, **Sphere (Guľa)**, **Plane (Rovina)**.
-  - **Klonovanie / Duplikácia**:
-    - Okamžitá duplikácia objektu cez klávesovú skratku **`Ctrl + D`** alebo tlačidlo v Object Manageri.
+  - Integrácia `ImGuizmo` (Move `E`, Rotate `R`, Scale `T`, World/Object `W`).
+  - 3D Raycast Picking kliknutím do viewportu.
+  - Parametrické telesá: Cube, Sphere, Plane, Light, Camera, Null.
+  - Duplikácia objektu cez `Ctrl+D` alebo kontextové menu.
+- [x] **Fáza 6: Transakčný Undo / Redo systém & Cinema 4D Quick Commander**:
+  - Architektúra príkazov `ICommand` a `CommandManager`:
+    - `TransformCommand`: zachytenie počiatočného a koncového stavu pri ťahaní gizma.
+    - `AddObjectCommand`: pridávanie telies s možnosťou vrátenia.
+    - `DuplicateObjectCommand`: klonovanie objektov.
+    - `DeleteObjectCommand`: nedeštruktívne odpojenie a opätovné vloženie objektu.
+  - Prepojenie v `Edit -> Undo / Redo` (dynamické názvy akcií), na hornej lište aj klávesových skratkách `Ctrl+Z` a `Ctrl+Y` / `Ctrl+Shift+Z`.
+  - **Cinema 4D Quick Commander (`Shift+C`)**:
+    - Plávajúce vyhľadávacie okno s okamžitou filtráciou príkazov a objektov.
+    - Navigácia šípkami, spustenie cez `Enter`, zatvorenie cez `Esc`.
+  - **Material Editor**:
+    - Dvojklik na materiál otvorí editor s výberom farby, presetmi (Plastic, Metal, Glass, Gold, Ruby), roughness a reflectance.
 
 ---
 
 ## 🔄 Čo sa aktuálne rieši (In Progress)
 
-- [ ] **Fáza 6 & 7: Command systém, Undo/Redo a serializácia scény:**
-  - Plnohodnotný transakčný Undo/Redo stack (`Ctrl+Z`, `Ctrl+Y`) pre posun objektov, zmeny hodnôt a pridávanie/mazanie.
-  - Ukladanie a načítanie projektu (`Ctrl+S`, `Ctrl+O`).
+- [ ] **Fáza 7: Serializácia scény a ukladanie projektov:**
+  - Ukladanie a načítanie projektu (`Ctrl+S`, `Ctrl+O`) do formátu `.cmod` (JSON).
 
 ---
 
 ## 📋 Čo treba urobiť (To-Do List)
 
-### Najbližšie kroky (Fáza 1 & 2):
-- [ ] Vytvoriť `CMakeLists.txt` podporujúci C++20 a automatické sťahovanie závislostí (GLFW, Glad, Dear ImGui, GLM).
-- [ ] Vytvoriť vstupný bod aplikácie: `src/main.cpp` a triedu `Application`.
-- [ ] Implementovať C4D Dark Theme pre ImGui (nastavenie farieb, zaoblení rohov, paddingu podľa `C4D_UI_LAYOUT_GUIDE.md`).
-- [ ] Implementovať `DockSpace` layout kopírujúci Cinema 4D:
-  - Menu Bar (File, Edit, Create...)
-  - Top Toolbar (Transformácie, Režimy)
-  - 3D Viewport okno
-  - Object Manager (panel vpravo hore)
-  - Attribute Manager (panel vpravo dole)
-  - Timeline & Transport Bar (panel dole)
-  - Coordinates Manager & Material Manager (spodné panely)
-
-### Následné kroky (Fáza 3 – Viewport & 3D Kamera):
-- [ ] Implementovať renderovaciu triedu pre 3D mriežku (Ground Grid) s osami X (červená) a Z (modrá).
-- [ ] Implementovať 3D kameru s presným C4D správaním:
-  - Skratky `1` (Pan), `2` (Zoom/Dolly), `3` (Orbit).
-  - Skratka `F5` / stredný klik pre prepnutie na 4 pohľady.
-  - HUD ikony v pravom hornom rohu viewportu.
-
-### Dátový model & Scéna (Fáza 4):
-- [ ] Vytvoriť základné triedy `BaseDocument`, `BaseObject`, `BaseTag`.
-- [ ] Vytvoriť prvé parametrické telesá: Kocka (`CubeObject`) a Guľa (`SphereObject`).
-- [ ] Prepojiť strom scény s Object Managerom vrátane semaforových bodiek viditeľnosti (traffic lights).
+### Následné kroky (Serializácia & Pokročilé modelovanie):
+- [ ] Implementovať export a import scény (pozície, HPB rotácie, škálovanie, materiály, strom hierarchie).
+- [ ] Implementovať `Make Editable` (kláves `C` v C4D) na konverziu parametrických telies na polygónový mesh (EditMode: Points, Edges, Polygons).
 
 ---
 
 ## 📝 Chronologický denník vývoja (Changelog & Diary)
+
+### [14. 10. 2026] – Implementácia Fázy 6: Undo/Redo systém, Quick Commander (Shift+C) a Material Editor
+* **Aktivita:** Implementácia transakčného manažéra príkazov, interaktívneho vyhľadávača Commander a plnohodnotného editora materiálov.
+* **Vykonané zmeny:**
+  * Vytvorená infraštruktúra `CommandManager` a rozhranie `ICommand`.
+  * Implementované príkazy:
+    * `TransformCommand` (Move, Rotate, Scale drag delta).
+    * `AddObjectCommand` (pridávanie objektov).
+    * `DuplicateObjectCommand` (klonovanie objektov).
+    * `DeleteObjectCommand` (nedeštruktívne mazanie s `DetachObject`/`InsertObject`).
+  * Prepojený Undo/Redo na:
+    * Klávesové skratky `Ctrl+Z`, `Ctrl+Y`, `Ctrl+Shift+Z`.
+    * Menu `Edit -> Undo [Názov]` a `Edit -> Redo [Názov]`.
+    * Hornú nástrojovú lištu s dynamickými tooltipmi.
+    * Kláves `Delete` / `Backspace`.
+  * Vytvorený **Cinema 4D Quick Commander (`Shift+C`)**:
+    * Centrálne HUD dialógové okno s live fulltext vyhľadávaním.
+    * Kategórie: Create, Tools, Edit, View, Material, Animation.
+    * Ovládanie šípkami hore/dole a klávesom Enter.
+  * Dokončený **Material Editor**:
+    * Interaktívna editácia farby, roughness a reflectance.
+    * Paleta rýchlych presetov (Plastic, Metal, Glass, Gold, Ruby) a tlačidlo priradenia na označený objekt.
+  * Build úspešne dokončený do `build/CineMod.exe` (0 chýb, 0 varovaní).
 
 ### [14. 10. 2026] – Implementácia Fázy 4 & 5: ImGuizmo, Raycast Picking a viac primitívov
 * **Aktivita:** Integrácia 3D manipulačného gizma, výberu objektov lúčom kamery a procedurálnych telies.

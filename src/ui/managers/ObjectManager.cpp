@@ -1,41 +1,40 @@
 #include "ObjectManager.hpp"
 #include "ui/theme/C4DTheme.hpp"
+#include "commands/CommandManager.hpp"
+#include "commands/SceneCommands.hpp"
 #include <imgui.h>
 
 namespace CineMod {
 
-    void ObjectManager::Render(Scene& scene) {
+    void ObjectManager::Render(Scene& scene, CommandManager& commandManager) {
         ImGui::Begin("Object Manager");
 
         // Top Toolbar inside Object Manager (C4D File, Edit, View, Objects menu)
         if (ImGui::Button("+ Cube")) {
-            BaseObject* obj = scene.AddObject("Cube", ObjectType::Cube);
-            obj->AddTag({ "Phong", "Phong" });
+            commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(scene, "Cube", ObjectType::Cube));
         }
         ImGui::SameLine();
         if (ImGui::Button("+ Sphere")) {
-            BaseObject* obj = scene.AddObject("Sphere", ObjectType::Sphere);
-            obj->AddTag({ "Phong", "Phong" });
+            commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(scene, "Sphere", ObjectType::Sphere));
         }
         ImGui::SameLine();
         if (ImGui::Button("+ Plane")) {
-            BaseObject* obj = scene.AddObject("Plane", ObjectType::Plane);
-            obj->AddTag({ "Phong", "Phong" });
+            commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(scene, "Plane", ObjectType::Plane));
         }
         ImGui::SameLine();
         if (ImGui::Button("+ Light")) {
-            scene.AddObject("Light", ObjectType::Light);
+            commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(scene, "Light", ObjectType::Light));
         }
         ImGui::SameLine();
         if (ImGui::Button("Duplicate")) {
             if (scene.GetSelectedObject()) {
-                scene.DuplicateObject(scene.GetSelectedObject());
+                commandManager.ExecuteCommand(std::make_unique<DuplicateObjectCommand>(scene, scene.GetSelectedObject()->GetId()));
             }
         }
         ImGui::SameLine();
         if (ImGui::Button("Delete")) {
             if (scene.GetSelectedObject()) {
-                scene.RemoveObject(scene.GetSelectedObject()->GetId());
+                commandManager.ExecuteCommand(std::make_unique<DeleteObjectCommand>(scene, scene.GetSelectedObject()->GetId()));
             }
         }
 
@@ -52,7 +51,7 @@ namespace CineMod {
         ImGui::BeginChild("ObjectTreeScroll", ImVec2(0, 0), false);
 
         for (const auto& obj : scene.GetRootObjects()) {
-            RenderObjectNode(obj.get(), scene);
+            RenderObjectNode(obj.get(), scene, commandManager);
         }
 
         ImGui::EndChild();
@@ -75,7 +74,7 @@ namespace CineMod {
         ImGui::PopStyleColor(3);
     }
 
-    void ObjectManager::RenderObjectNode(BaseObject* obj, Scene& scene) {
+    void ObjectManager::RenderObjectNode(BaseObject* obj, Scene& scene, CommandManager& commandManager) {
         if (!obj) return;
 
         ImGui::PushID(static_cast<int>(obj->GetId()));
@@ -130,6 +129,17 @@ namespace CineMod {
             scene.SelectObject(obj);
         }
 
+        if (ImGui::BeginPopupContextItem()) {
+            scene.SelectObject(obj);
+            if (ImGui::MenuItem("Duplicate")) {
+                commandManager.ExecuteCommand(std::make_unique<DuplicateObjectCommand>(scene, obj->GetId()));
+            }
+            if (ImGui::MenuItem("Delete", "Del")) {
+                commandManager.ExecuteCommand(std::make_unique<DeleteObjectCommand>(scene, obj->GetId()));
+            }
+            ImGui::EndPopup();
+        }
+
         // Tags strip to the right
         ImGui::SameLine(ImGui::GetWindowWidth() - 140.0f);
         for (const auto& tag : obj->GetTags()) {
@@ -145,7 +155,7 @@ namespace CineMod {
         // Recurse children if open
         if (nodeOpen && !obj->GetChildren().empty()) {
             for (const auto& child : obj->GetChildren()) {
-                RenderObjectNode(child.get(), scene);
+                RenderObjectNode(child.get(), scene, commandManager);
             }
             ImGui::TreePop();
         }

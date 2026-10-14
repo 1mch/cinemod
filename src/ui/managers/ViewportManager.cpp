@@ -1,5 +1,6 @@
 #include "ViewportManager.hpp"
 #include "ui/theme/C4DTheme.hpp"
+#include "commands/SceneCommands.hpp"
 #include <imgui.h>
 #include <ImGuizmo.h>
 #include <iostream>
@@ -9,7 +10,7 @@ namespace CineMod {
     ViewportManager::ViewportManager() {
     }
 
-    void ViewportManager::Render(ViewportRenderer& renderer, Scene& scene, ToolMode currentTool) {
+    void ViewportManager::Render(ViewportRenderer& renderer, Scene& scene, ToolMode currentTool, CommandManager& commandManager) {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::Begin("Perspective View", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         ImGui::PopStyleVar();
@@ -81,10 +82,10 @@ namespace CineMod {
         ImVec2 actualSize = ImGui::GetItemRectSize();
 
         // 1. Render interactive 3D Transform Gizmo (ImGuizmo) FIRST so ImGuizmo processes mouse inputs
-        RenderGizmo(renderer, scene, currentTool, viewPos, actualSize);
+        RenderGizmo(renderer, scene, currentTool, viewPos, actualSize, commandManager);
 
         // 2. Handle C4D mouse and keyboard camera navigation & Raycast Selection
-        HandleInput(renderer, scene, viewPos, actualSize);
+        HandleInput(renderer, scene, viewPos, actualSize, commandManager);
 
         // 3. Render C4D HUD overlay (top right icons for Pan, Zoom, Orbit, 4-Split)
         RenderHudOverlay(renderer);
@@ -92,10 +93,16 @@ namespace CineMod {
         ImGui::End();
     }
 
-    void ViewportManager::RenderGizmo(ViewportRenderer& renderer, Scene& scene, ToolMode currentTool, const ImVec2& viewPos, const ImVec2& viewSize) {
+    void ViewportManager::RenderGizmo(ViewportRenderer& renderer, Scene& scene, ToolMode currentTool, const ImVec2& viewPos, const ImVec2& viewSize, CommandManager& commandManager) {
         BaseObject* selectedObj = scene.GetSelectedObject();
-        if (!selectedObj) return;
-        if (currentTool != ToolMode::Move && currentTool != ToolMode::Rotate && currentTool != ToolMode::Scale) return;
+        if (!selectedObj) {
+            m_wasUsingGizmo = false;
+            return;
+        }
+        if (currentTool != ToolMode::Move && currentTool != ToolMode::Rotate && currentTool != ToolMode::Scale) {
+            m_wasUsingGizmo = false;
+            return;
+        }
 
         ImGuizmo::PushID(static_cast<int>(selectedObj->GetId()));
         ImGuizmo::Enable(true);
@@ -113,6 +120,16 @@ namespace CineMod {
 
         ImGuizmo::MODE mode = (m_coordSystem == CoordSystem::World) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
 
+        bool isUsingNow = ImGuizmo::IsUsing();
+
+        // Capture initial transform on drag start
+        if (isUsingNow && !m_wasUsingGizmo) {
+            m_gizmoObjId = selectedObj->GetId();
+            m_gizmoStartPos = selectedObj->GetPosition();
+            m_gizmoStartRot = selectedObj->GetRotationHPB();
+            m_gizmoStartScale = selectedObj->GetScale();
+        }
+
         if (ImGuizmo::Manipulate(&view[0][0], &proj[0][0], op, mode, &model[0][0])) {
             float translation[3], rotation[3], scale[3];
             ImGuizmo::DecomposeMatrixToComponents(&model[0][0], translation, rotation, scale);
@@ -121,10 +138,26 @@ namespace CineMod {
             selectedObj->SetScale(glm::vec3(scale[0], scale[1], scale[2]));
         }
 
+        // Push Undo command when drag completes
+        if (!isUsingNow && m_wasUsingGizmo && m_gizmoObjId == selectedObj->GetId()) {
+            glm::vec3 newPos = selectedObj->GetPosition();
+            glm::vec3 newRot = selectedObj->GetRotationHPB();
+            glm::vec3 newScale = selectedObj->GetScale();
+
+            if (newPos != m_gizmoStartPos || newRot != m_gizmoStartRot || newScale != m_gizmoStartScale) {
+                commandManager.ExecuteCommand(std::make_unique<TransformCommand>(
+                    scene, selectedObj->GetId(),
+                    m_gizmoStartPos, m_gizmoStartRot, m_gizmoStartScale,
+                    newPos, newRot, newScale
+                ));
+            }
+        }
+        m_wasUsingGizmo = isUsingNow;
+
         ImGuizmo::PopID();
     }
 
-    void ViewportManager::HandleInput(ViewportRenderer& renderer, Scene& scene, const ImVec2& viewPos, const ImVec2& viewSize) {
+    void ViewportManager::HandleInput(ViewportRenderer& renderer, Scene& scene, const ImVec2& viewPos, const ImVec2& viewSize, CommandManager& commandManager) {
         ImGuiIO& io = ImGui::GetIO();
         Camera& camera = renderer.GetCamera();
 
@@ -133,9 +166,9 @@ namespace CineMod {
             m_coordSystem = (m_coordSystem == CoordSystem::World) ? CoordSystem::Object : CoordSystem::World;
         }
 
-        // Duplicate with Ctrl+D
+        // Duplicate with Ctrl+D (via CommandManager for Undo)
         if ((io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false)) && scene.GetSelectedObject()) {
-            scene.DuplicateObject(scene.GetSelectedObject());
+            commandManager.ExecuteCommand(std::make_unique<DuplicateObjectCommand>(scene, scene.GetSelectedObject()->GetId()));
         }
 
         // Quick Frame shortcut keys

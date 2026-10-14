@@ -56,6 +56,10 @@ namespace CineMod {
         const std::vector<Tag>& GetTags() const { return m_tags; }
         void AddTag(const Tag& tag) { m_tags.push_back(tag); }
 
+        // Material reference
+        uint64_t GetMaterialId() const { return m_materialId; }
+        void SetMaterialId(uint64_t matId) { m_materialId = matId; }
+
         // Parametric properties
         // Cube
         glm::vec3 cubeSize{ 200.0f, 200.0f, 200.0f };
@@ -84,6 +88,7 @@ namespace CineMod {
         VisibilityMode m_renderVisibility = VisibilityMode::Default;
         bool m_enabled = true;
 
+        uint64_t m_materialId = 1;
         std::vector<Tag> m_tags;
     };
 

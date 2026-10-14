@@ -6,6 +6,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <ImGuizmo.h>
+#include "commands/SceneCommands.hpp"
 #include <iostream>
 
 namespace CineMod {
@@ -119,6 +120,27 @@ namespace CineMod {
         ImGuiIO& io = ImGui::GetIO();
         if (io.WantTextInput) return;
 
+        // Quick Commander (Shift+C)
+        if (io.KeyShift && !io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_C, false)) {
+            m_commander.Toggle();
+        }
+
+        // Undo & Redo shortcuts
+        if (io.KeyCtrl && !io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
+            m_commandManager.Undo();
+        }
+        if ((io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y, false)) ||
+            (io.KeyCtrl && io.KeyShift && ImGui::IsKeyPressed(ImGuiKey_Z, false))) {
+            m_commandManager.Redo();
+        }
+
+        // Duplicate active object (Ctrl+D)
+        if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false)) {
+            if (m_scene.GetSelectedObject()) {
+                m_commandManager.ExecuteCommand(std::make_unique<DuplicateObjectCommand>(m_scene, m_scene.GetSelectedObject()->GetId()));
+            }
+        }
+
         // C4D Tool Shortcuts
         if (ImGui::IsKeyPressed(ImGuiKey_E, false)) {
             m_currentTool = ToolMode::Move;
@@ -150,10 +172,10 @@ namespace CineMod {
             m_scene.SetPlaying(!m_scene.IsPlaying());
         }
 
-        // Delete active object
+        // Delete active object (Delete or Backspace)
         if (ImGui::IsKeyPressed(ImGuiKey_Delete, false) || ImGui::IsKeyPressed(ImGuiKey_Backspace, false)) {
             if (m_scene.GetSelectedObject()) {
-                m_scene.RemoveObject(m_scene.GetSelectedObject()->GetId());
+                m_commandManager.ExecuteCommand(std::make_unique<DeleteObjectCommand>(m_scene, m_scene.GetSelectedObject()->GetId()));
             }
         }
     }
@@ -204,8 +226,21 @@ namespace CineMod {
             }
 
             if (ImGui::BeginMenu("Edit")) {
-                if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
-                if (ImGui::MenuItem("Redo", "Ctrl+Y")) {}
+                std::string undoLabel = "Undo";
+                if (m_commandManager.CanUndo()) {
+                    undoLabel += " " + m_commandManager.GetUndoName();
+                }
+                if (ImGui::MenuItem(undoLabel.c_str(), "Ctrl+Z", false, m_commandManager.CanUndo())) {
+                    m_commandManager.Undo();
+                }
+
+                std::string redoLabel = "Redo";
+                if (m_commandManager.CanRedo()) {
+                    redoLabel += " " + m_commandManager.GetRedoName();
+                }
+                if (ImGui::MenuItem(redoLabel.c_str(), "Ctrl+Y", false, m_commandManager.CanRedo())) {
+                    m_commandManager.Redo();
+                }
                 ImGui::Separator();
                 if (ImGui::MenuItem("Project Settings...", "Ctrl+D")) {}
                 if (ImGui::MenuItem("Preferences...", "Ctrl+E")) {}
@@ -213,14 +248,14 @@ namespace CineMod {
             }
 
             if (ImGui::BeginMenu("Create")) {
-                if (ImGui::MenuItem("Cube")) { m_scene.AddObject("Cube", ObjectType::Cube); }
-                if (ImGui::MenuItem("Sphere")) { m_scene.AddObject("Sphere", ObjectType::Sphere); }
-                if (ImGui::MenuItem("Cylinder")) { m_scene.AddObject("Cylinder", ObjectType::Cylinder); }
-                if (ImGui::MenuItem("Plane")) { m_scene.AddObject("Plane", ObjectType::Plane); }
+                if (ImGui::MenuItem("Cube")) { m_commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(m_scene, "Cube", ObjectType::Cube)); }
+                if (ImGui::MenuItem("Sphere")) { m_commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(m_scene, "Sphere", ObjectType::Sphere)); }
+                if (ImGui::MenuItem("Cylinder")) { m_commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(m_scene, "Cylinder", ObjectType::Cylinder)); }
+                if (ImGui::MenuItem("Plane")) { m_commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(m_scene, "Plane", ObjectType::Plane)); }
                 ImGui::Separator();
-                if (ImGui::MenuItem("Camera")) { m_scene.AddObject("Camera", ObjectType::Camera); }
-                if (ImGui::MenuItem("Light")) { m_scene.AddObject("Light", ObjectType::Light); }
-                if (ImGui::MenuItem("Null Object")) { m_scene.AddObject("Null", ObjectType::Null); }
+                if (ImGui::MenuItem("Camera")) { m_commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(m_scene, "Camera", ObjectType::Camera)); }
+                if (ImGui::MenuItem("Light")) { m_commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(m_scene, "Light", ObjectType::Light)); }
+                if (ImGui::MenuItem("Null Object")) { m_commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(m_scene, "Null", ObjectType::Null)); }
                 ImGui::EndMenu();
             }
 
@@ -260,8 +295,10 @@ namespace CineMod {
             }
 
             // Quick Commander shortcut in menu bar (Shift+C)
-            ImGui::SameLine(ImGui::GetWindowWidth() - 220.0f);
-            ImGui::TextDisabled("Search: Shift+C");
+            ImGui::SameLine(ImGui::GetWindowWidth() - 200.0f);
+            if (ImGui::SmallButton("Search: Shift+C")) {
+                m_commander.Open();
+            }
 
             ImGui::EndMainMenuBar();
         }
@@ -278,9 +315,22 @@ namespace CineMod {
         ImGui::Begin("##TopToolBar", nullptr, flags);
 
         // Undo / Redo
-        ImGui::Button("Undo");
+        if (!m_commandManager.CanUndo()) ImGui::BeginDisabled();
+        if (ImGui::Button("Undo")) {
+            m_commandManager.Undo();
+        }
+        if (!m_commandManager.CanUndo()) ImGui::EndDisabled();
+        else if (ImGui::IsItemHovered()) ImGui::SetTooltip("Undo %s (Ctrl+Z)", m_commandManager.GetUndoName().c_str());
+
         ImGui::SameLine();
-        ImGui::Button("Redo");
+
+        if (!m_commandManager.CanRedo()) ImGui::BeginDisabled();
+        if (ImGui::Button("Redo")) {
+            m_commandManager.Redo();
+        }
+        if (!m_commandManager.CanRedo()) ImGui::EndDisabled();
+        else if (ImGui::IsItemHovered()) ImGui::SetTooltip("Redo %s (Ctrl+Y)", m_commandManager.GetRedoName().c_str());
+
         ImGui::SameLine();
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
         ImGui::SameLine();
@@ -303,11 +353,11 @@ namespace CineMod {
         ImGui::SameLine();
 
         // Quick Primitives
-        if (ImGui::Button("+ Cube")) { m_scene.AddObject("Cube", ObjectType::Cube); }
+        if (ImGui::Button("+ Cube")) { m_commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(m_scene, "Cube", ObjectType::Cube)); }
         ImGui::SameLine();
-        if (ImGui::Button("+ Sphere")) { m_scene.AddObject("Sphere", ObjectType::Sphere); }
+        if (ImGui::Button("+ Sphere")) { m_commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(m_scene, "Sphere", ObjectType::Sphere)); }
         ImGui::SameLine();
-        if (ImGui::Button("+ Plane")) { m_scene.AddObject("Plane", ObjectType::Plane); }
+        if (ImGui::Button("+ Plane")) { m_commandManager.ExecuteCommand(std::make_unique<AddObjectCommand>(m_scene, "Plane", ObjectType::Plane)); }
         ImGui::SameLine();
 
         ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
@@ -387,12 +437,15 @@ namespace CineMod {
         ImGui::End();
 
         // Render all Cinema 4D Managers
-        m_viewportManager.Render(m_renderer, m_scene, m_currentTool);
-        m_objectManager.Render(m_scene);
+        m_viewportManager.Render(m_renderer, m_scene, m_currentTool, m_commandManager);
+        m_objectManager.Render(m_scene, m_commandManager);
         m_attributeManager.Render(m_scene);
         m_coordinatesManager.Render(m_scene);
         m_materialManager.Render(m_scene);
         m_timelineManager.Render(m_scene);
+
+        // Cinema 4D Quick Commander Popup (Shift+C)
+        m_commander.Render(m_scene, m_renderer, m_currentTool, m_commandManager);
     }
 
 } // namespace CineMod

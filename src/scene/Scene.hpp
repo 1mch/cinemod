@@ -23,6 +23,8 @@ namespace CineMod {
         // Objects
         BaseObject* AddObject(const std::string& name, ObjectType type, BaseObject* parent = nullptr);
         void RemoveObject(uint64_t id);
+        std::unique_ptr<BaseObject> DetachObject(uint64_t id);
+        BaseObject* InsertObject(std::unique_ptr<BaseObject> obj, BaseObject* parent = nullptr);
         const std::vector<std::unique_ptr<BaseObject>>& GetRootObjects() const { return m_rootObjects; }
 
         // Selection & Interaction
@@ -35,8 +37,11 @@ namespace CineMod {
         // Materials
         Material* AddMaterial(const std::string& name);
         const std::vector<Material>& GetMaterials() const { return m_materials; }
+        std::vector<Material>& GetMaterials() { return m_materials; }
         Material* GetSelectedMaterial() { return m_selectedMaterial; }
         void SelectMaterial(Material* mat) { m_selectedMaterial = mat; }
+        const Material* FindMaterialById(uint64_t id) const;
+        Material* FindMaterialById(uint64_t id);
 
         // Timeline & Animation
         int GetCurrentFrame() const { return m_currentFrame; }

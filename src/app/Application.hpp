@@ -12,6 +12,8 @@
 #include "ui/managers/MaterialManager.hpp"
 #include "ui/managers/TimelineManager.hpp"
 #include "ui/managers/ViewportManager.hpp"
+#include "ui/Commander.hpp"
+#include "commands/CommandManager.hpp"
 
 namespace CineMod {
 
@@ -45,6 +47,8 @@ namespace CineMod {
         MaterialManager m_materialManager;
         TimelineManager m_timelineManager;
         ViewportManager m_viewportManager;
+        CommandManager m_commandManager;
+        Commander m_commander;
 
         // Current tool & modes
         ToolMode m_currentTool = ToolMode::Move;

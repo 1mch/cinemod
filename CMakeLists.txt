@@ -77,7 +77,7 @@ target_link_libraries(imgui_lib PUBLIC
 )
 
 # Main CineMod executable
-file(GLOB_RECURSE CINEMOD_SOURCES 
+file(GLOB_RECURSE CINEMOD_SOURCES CONFIGURE_DEPENDS
     "src/*.cpp"
     "src/*.hpp"
     "src/*.h"
