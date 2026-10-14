@@ -103,6 +103,10 @@ Tento súbor slúži ako centrálny pracovný denník vývoja. Obsahuje aktuáln
 * **Aktivita:** Integrácia 3D manipulačného gizma, výberu objektov lúčom kamery a procedurálnych telies.
 * **Vykonané zmeny:**
   * Pridaná a skompilovaná knižnica `ImGuizmo` priamo do `imgui_lib`.
+  * Vyriešený lifecycle `ImGuizmo`:
+    * Doplnené `ImGuizmo::SetImGuiContext()` a `ImGuizmo::BeginFrame()` do hlavnej renderovacej slučky.
+    * Upravené poradie spracovania: `RenderGizmo` sa vyhodnocuje pred vstupmi, čím sa predchádza nechcenému odznačeniu objektu pri kliknutí na šípky gizma.
+    * Pridané `ImGuizmo::PushID` / `PopID` pre stabilnú správu inštancií.
   * Prepojený `ImGuizmo` s `ViewportManagerom`:
     * Posun (`E`), Rotácia (`R`), Škálovanie (`T`).
     * Prepínanie svetového a lokálneho priestoru (`W`).

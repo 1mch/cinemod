@@ -80,13 +80,13 @@ namespace CineMod {
         ImVec2 viewPos = ImGui::GetItemRectMin();
         ImVec2 actualSize = ImGui::GetItemRectSize();
 
-        // Handle C4D mouse and keyboard camera navigation & Raycast Selection
-        HandleInput(renderer, scene, viewPos, actualSize);
-
-        // Render interactive 3D Transform Gizmo (ImGuizmo)
+        // 1. Render interactive 3D Transform Gizmo (ImGuizmo) FIRST so ImGuizmo processes mouse inputs
         RenderGizmo(renderer, scene, currentTool, viewPos, actualSize);
 
-        // Render C4D HUD overlay (top right icons for Pan, Zoom, Orbit, 4-Split)
+        // 2. Handle C4D mouse and keyboard camera navigation & Raycast Selection
+        HandleInput(renderer, scene, viewPos, actualSize);
+
+        // 3. Render C4D HUD overlay (top right icons for Pan, Zoom, Orbit, 4-Split)
         RenderHudOverlay(renderer);
 
         ImGui::End();
@@ -97,8 +97,10 @@ namespace CineMod {
         if (!selectedObj) return;
         if (currentTool != ToolMode::Move && currentTool != ToolMode::Rotate && currentTool != ToolMode::Scale) return;
 
+        ImGuizmo::PushID(static_cast<int>(selectedObj->GetId()));
+        ImGuizmo::Enable(true);
         ImGuizmo::SetOrthographic(false);
-        ImGuizmo::SetDrawlist();
+        ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
         ImGuizmo::SetRect(viewPos.x, viewPos.y, viewSize.x, viewSize.y);
 
         glm::mat4 view = renderer.GetCamera().GetViewMatrix();
@@ -118,6 +120,8 @@ namespace CineMod {
             selectedObj->SetRotationHPB(glm::vec3(rotation[1], rotation[0], rotation[2])); // Heading=Yaw(Y), Pitch=X, Bank=Z
             selectedObj->SetScale(glm::vec3(scale[0], scale[1], scale[2]));
         }
+
+        ImGuizmo::PopID();
     }
 
     void ViewportManager::HandleInput(ViewportRenderer& renderer, Scene& scene, const ImVec2& viewPos, const ImVec2& viewSize) {
@@ -144,8 +148,9 @@ namespace CineMod {
 
         if (!ImGui::IsItemHovered() && !m_isInteracting) return;
 
-        // If user is actively using ImGuizmo, don't do camera orbit or raycast
-        if (ImGuizmo::IsUsing()) {
+        // If user is hovering or dragging ImGuizmo, do NOT do camera orbit or raycasting!
+        if (ImGuizmo::IsOver() || ImGuizmo::IsUsing()) {
+            m_isInteracting = false;
             return;
         }
 
@@ -162,12 +167,14 @@ namespace CineMod {
         bool isNavigating = key1 || key2 || key3 || altDown;
 
         // Raycasting Object Picking (Click to Select)
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !isNavigating && !ImGuizmo::IsOver()) {
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !isNavigating) {
             float mouseX = io.MousePos.x - viewPos.x;
             float mouseY = io.MousePos.y - viewPos.y;
             Ray ray = camera.GetRay(mouseX, mouseY, viewSize.x, viewSize.y);
             BaseObject* picked = scene.PickObject(ray);
-            scene.SelectObject(picked);
+            if (picked != nullptr) {
+                scene.SelectObject(picked);
+            }
         }
 
         bool lmbHeld = ImGui::IsMouseDown(ImGuiMouseButton_Left);

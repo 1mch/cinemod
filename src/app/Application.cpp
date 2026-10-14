@@ -5,6 +5,7 @@
 #include <imgui_internal.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <ImGuizmo.h>
 #include <iostream>
 
 namespace CineMod {
@@ -63,6 +64,8 @@ namespace CineMod {
         // Apply Cinema 4D Dark Theme
         C4DTheme::ApplyTheme();
 
+        ImGuizmo::SetImGuiContext(ImGui::GetCurrentContext());
+
         ImGui_ImplGlfw_InitForOpenGL(m_window, true);
         ImGui_ImplOpenGL3_Init("#version 330 core");
 
@@ -94,6 +97,7 @@ namespace CineMod {
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
+            ImGuizmo::BeginFrame();
 
             RenderUI();
 
